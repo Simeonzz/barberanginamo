@@ -1,0 +1,8 @@
+{
+    "intelephense.diagnostics.undefinedVariables": false,
+    "intelephense.diagnostics.undefinedTypes": false,
+    "intelephense.files.maxSize": 5000000,
+    "intelephense.environment.includePaths": [
+        "${workspaceFolder}/**"
+    ]
+}

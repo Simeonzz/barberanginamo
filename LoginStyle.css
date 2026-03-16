@@ -1,0 +1,129 @@
+/* Main container */
+.auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: white;
+}
+
+/* Card container - Make it r */
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh; /* Prevent card from being too tall */
+  overflow: hidden;
+}
+
+/* Header section - Reduce padding */
+.card-header {
+  padding: 20px 24px 0; /*top padding */
+  text-align: center;
+}
+
+.logo {
+  width: 90px; /*  logo */
+  height: 90px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 2px; /*margin */
+  overflow: hidden; 
+}
+
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; 
+}
+
+/* Body section - Reduce padding */
+.card-body {
+  padding: 15px 20px 20px; /*top padding */
+}
+
+/* Tabs - r */
+.tabs {
+  display: flex;
+  margin-bottom: 12px; /**/
+  border-radius: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 0; /**/
+  text-align: center;
+  cursor: pointer;
+  font-weight: 600;
+  color: #FFFF00;
+  background: #000000;
+  font-size: 15px; /* r */
+  transition: all 0.15s;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #ffffff;
+}
+
+.tab.active {
+  background: black;
+  color: #FFFF00;
+  border-right: 2px solid #FFFFFF;
+}
+
+/* Form fields - Reduce spacing */
+.field {
+  margin-bottom: 10px; /**/
+}
+
+label {
+  font-size: 12px; /*  */
+  color: #000000;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 3px; /**/
+}
+
+input {
+  width: 100%;
+  padding: 8px 10px; /**/
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  box-sizing: border-box;
+  font-size: 14px;
+  height: 40px; /* Fixed height */
+}
+
+/* Button - r */
+.btn {
+  width: 100%;
+  padding: 10px; /**/
+  border-radius: 8px;
+  background: #000000;
+  color: rgb(255, 217, 0);
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  margin-top: 6px; /**/
+  height: 42px; /* Fixed height */
+}
+
+/* Message boxes - r */
+.msg {
+  padding: 8px 10px; 
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-size: 13px; 
+}
+
+/* Muted text  */
+.muted {
+  color: #6c757d;
+  font-size: 13px; 
+}

@@ -1,0 +1,330 @@
+/* rating.css - Separate styles for rating system */
+
+/* Staff Rating Badge */
+.staff-rating-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(212, 175, 55, 0.15);
+    padding: 8px 15px;
+    border-radius: 30px;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.staff-rating-badge:hover {
+    background: rgba(212, 175, 55, 0.25);
+    transform: translateY(-2px);
+    border-color: #d4af37;
+}
+
+.staff-rating-badge .stars {
+    color: #d4af37;
+    font-size: 1rem;
+    letter-spacing: 2px;
+}
+
+.staff-rating-badge .count {
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Team Member Images - Crop from bottom */
+.team-member-img {
+    object-fit: cover !important;
+    object-position: center bottom !important;
+    width: 100%;
+    height: 100%;
+}
+
+/* Individual adjustments for each team member */
+.team-card:nth-child(1) .team-member-img { object-position: center 85% !important; } /* Ms.Nica */
+.team-card:nth-child(2) .team-member-img { object-position: center 80% !important; } /* Ms.Shan */
+.team-card:nth-child(3) .team-member-img { object-position: center 80% !important; } /* Ms.Mau */
+.team-card:nth-child(4) .team-member-img { object-position: center 85% !important; } /* Ms.Aan */
+.team-card:nth-child(5) .team-member-img { object-position: center 75% !important; } /* Ms.Jing */
+.team-card:nth-child(6) .team-member-img { object-position: center 80% !important; } /* Ms.Joy */
+.team-card:nth-child(7) .team-member-img { object-position: center 80% !important; } /* Ms.Leigh */
+
+/* Staff Ratings Modal */
+.staff-ratings-modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 10001;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 28px;
+    cursor: pointer;
+    color: #999;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+/* Ratings Stats */
+.ratings-stats {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.average-rating {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.average-number {
+    font-size: 1.5rem;
+    color: #d4af37;
+    font-weight: 700;
+}
+
+.rating-stars {
+    display: flex;
+    gap: 2px;
+}
+
+.rating-stars span {
+    font-size: 1.2rem;
+}
+
+/* Comment Items */
+.comment-item {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.comment-item:last-child {
+    border-bottom: none;
+}
+
+.comment-user {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.comment-stars {
+    color: #d4af37;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.comment-text {
+    color: #666;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.comment-date {
+    color: #999;
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.no-reviews {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+}
+
+/* Testimonials Section */
+.testimonials-section {
+    background: #f9f9f9;
+    color: #333;
+    padding: 60px 0;
+}
+
+.testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 30px;
+    margin-top: 40px;
+}
+
+.testimonial-card {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    border: 1px solid #eee;
+    transition: transform 0.3s ease;
+}
+
+.testimonial-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+}
+
+.testimonial-stars {
+    margin-bottom: 15px;
+    color: #d4af37;
+    font-size: 1.3rem;
+}
+
+.testimonial-text {
+    color: #555;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    font-style: italic;
+}
+
+.testimonial-author {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.author-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d4af37, #b8860b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.author-info {
+    flex: 1;
+}
+
+.author-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.author-staff {
+    color: #d4af37;
+    font-size: 0.9rem;
+}
+
+.author-date {
+    color: #999;
+    font-size: 0.8rem;
+}
+
+/* Stats Cards */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-top: 50px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    color: #d4af37;
+    margin-bottom: 10px;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.stat-label {
+    color: #666;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 15px;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    color: #ddd;
+    margin-bottom: 20px;
+}
+
+.empty-title {
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.empty-text {
+    color: #999;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* Responsive */
+@media screen and (max-width: 768px) {
+    .testimonials-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+        gap: 15px !important;
+    }
+    
+    .staff-ratings-modal {
+        width: 95%;
+        padding: 20px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .testimonial-card {
+        padding: 20px;
+    }
+    
+    .testimonial-stars {
+        font-size: 1.1rem;
+    }
+    
+    .testimonial-text {
+        font-size: 0.95rem;
+    }
+}
