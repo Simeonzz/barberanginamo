@@ -23,7 +23,7 @@ session_start();
             align-items: center;
             justify-content: center;
         }
-
+            
         .about-hero-content {
             max-width: 900px;
             padding: 0 20px;
