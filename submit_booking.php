@@ -129,6 +129,14 @@ if ($stmt) {
     $success = false;
 }
 if ($success) {
+    if (!empty($staff_id)) {
+        $staffStmt = $conn->prepare("UPDATE staff SET is_available = 0 WHERE id = ?");
+        if ($staffStmt) {
+            $staffStmt->bind_param("i", $staff_id);
+            $staffStmt->execute();
+            $staffStmt->close();
+        }
+    }
     $_SESSION['booking_success'] = 'Booking submitted successfully! We will contact you to confirm your appointment.';
     header('Location: index.php');
     exit;

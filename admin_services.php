@@ -25,6 +25,7 @@ function setupServicesTable($conn) {
         $conn->query("CREATE TABLE IF NOT EXISTS services (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(100) NOT NULL,
+            category VARCHAR(80) DEFAULT 'Uncategorized',
             description TEXT,
             price DECIMAL(10,2) NOT NULL,
             duration INT NOT NULL,
@@ -48,8 +49,9 @@ function setupServicesTable($conn) {
             ];
             
             foreach ($sampleServices as $service) {
-                $stmt = $conn->prepare("INSERT INTO services (name, description, price, duration, is_active) VALUES (?, ?, ?, ?, 1)");
-                $stmt->bind_param("ssdi", $service['name'], $service['description'], $service['price'], $service['duration']);
+                $stmt = $conn->prepare("INSERT INTO services (name, category, description, price, duration, is_active) VALUES (?, ?, ?, ?, ?, 1)");
+                $cat = 'Haircut';
+                $stmt->bind_param("sssdi", $service['name'], $cat, $service['description'], $service['price'], $service['duration']);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -65,6 +67,9 @@ function setupServicesTable($conn) {
         // Add missing columns if they don't exist
         if (!in_array('description', $columnNames)) {
             $conn->query("ALTER TABLE services ADD COLUMN description TEXT AFTER name");
+        }
+        if (!in_array('category', $columnNames)) {
+            $conn->query("ALTER TABLE services ADD COLUMN category VARCHAR(80) DEFAULT 'Uncategorized' AFTER name");
         }
         if (!in_array('duration', $columnNames)) {
             $conn->query("ALTER TABLE services ADD COLUMN duration INT AFTER price");
@@ -124,6 +129,7 @@ function uploadImage($file) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_service'])) {
     $id = $_POST['service_id'] ?? null;
     $name = trim($_POST['name']);
+    $category = trim($_POST['category'] ?? 'Uncategorized');
     $description = trim($_POST['description']);
     $price = floatval($_POST['price']);
     $duration = intval($_POST['duration']);
@@ -148,21 +154,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_service'])) {
         if ($id) {
             // Update service
             if ($image_url) {
-                $stmt = $conn->prepare("UPDATE services SET name=?, description=?, price=?, duration=?, image_url=? WHERE id=?");
-                $stmt->bind_param("ssdisi", $name, $description, $price, $duration, $image_url, $id);
+                $stmt = $conn->prepare("UPDATE services SET name=?, category=?, description=?, price=?, duration=?, image_url=? WHERE id=?");
+                $stmt->bind_param("sssdisi", $name, $category, $description, $price, $duration, $image_url, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE services SET name=?, description=?, price=?, duration=? WHERE id=?");
-                $stmt->bind_param("ssdii", $name, $description, $price, $duration, $id);
+                $stmt = $conn->prepare("UPDATE services SET name=?, category=?, description=?, price=?, duration=? WHERE id=?");
+                $stmt->bind_param("sssiii", $name, $category, $description, $price, $duration, $id);
             }
             $message = "Service updated successfully.";
         } else {
             // Insert new service
             if ($image_url) {
-                $stmt = $conn->prepare("INSERT INTO services (name, description, price, duration, image_url, is_active) VALUES (?, ?, ?, ?, ?, 1)");
-                $stmt->bind_param("ssdis", $name, $description, $price, $duration, $image_url);
+                $stmt = $conn->prepare("INSERT INTO services (name, category, description, price, duration, image_url, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)");
+                $stmt->bind_param("sssdis", $name, $category, $description, $price, $duration, $image_url);
             } else {
-                $stmt = $conn->prepare("INSERT INTO services (name, description, price, duration, is_active) VALUES (?, ?, ?, ?, 1)");
-                $stmt->bind_param("ssdi", $name, $description, $price, $duration);
+                $stmt = $conn->prepare("INSERT INTO services (name, category, description, price, duration, is_active) VALUES (?, ?, ?, ?, ?, 1)");
+                $stmt->bind_param("sssdi", $name, $category, $description, $price, $duration);
             }
             $message = "Service added successfully.";
         }
@@ -214,6 +220,7 @@ if ($result) {
     <title>Admin - Manage Services</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/admin-theme.css">
     <style>
         :root {
             --sidebar-width: 250px;
@@ -580,7 +587,8 @@ if ($result) {
                                             <?= $is_active ? 'Active' : 'Inactive' ?>
                                         </span>
                                     </h5>
-                                    <p class="card-text text-muted small mb-3"><?= nl2br(htmlspecialchars($description)) ?></p>
+                                    <p class="card-text text-muted small mb-2"><?= nl2br(htmlspecialchars($description)) ?></p>
+                                    <div class="small text-muted mb-3"><strong>Category:</strong> <?= htmlspecialchars($service['category'] ?? 'Uncategorized') ?></div>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <p class="mb-1"><strong>Price:</strong> ₱<?= number_format($price, 2) ?></p>
@@ -625,6 +633,11 @@ if ($result) {
                                 <div class="mb-3">
                                     <label class="form-label">Service Name *</label>
                                     <input type="text" name="name" id="name" class="form-control" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Category *</label>
+                                    <input type="text" name="category" id="category" class="form-control" placeholder="e.g. Haircut, Hair Color, Nails" required>
                                 </div>
                                 
                                 <div class="mb-3">
@@ -699,6 +712,7 @@ if ($result) {
             document.getElementById('service_id').value = '';
             document.getElementById('existing_image').value = '';
             document.getElementById('name').value = '';
+            document.getElementById('category').value = '';
             document.getElementById('description').value = '';
             document.getElementById('price').value = '';
             document.getElementById('duration').value = '';
@@ -714,6 +728,7 @@ if ($result) {
             document.getElementById('service_id').value = service.id || '';
             document.getElementById('existing_image').value = service.image_url || '';
             document.getElementById('name').value = service.name || '';
+            document.getElementById('category').value = service.category || '';
             document.getElementById('description').value = service.description || '';
             document.getElementById('price').value = service.price || '';
             document.getElementById('duration').value = service.duration || '';

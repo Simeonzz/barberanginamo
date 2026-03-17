@@ -73,6 +73,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt = $conn->prepare("UPDATE bookings SET status = ? WHERE id = ?");
             $stmt->bind_param("si", $status, $bookingId);
             if ($stmt->execute()) {
+                if (in_array($status, ['cancelled', 'completed'], true)) {
+                    $staffStmt = $conn->prepare("UPDATE staff s JOIN bookings b ON b.staff_id = s.id SET s.is_available = 1 WHERE b.id = ?");
+                    if ($staffStmt) {
+                        $staffStmt->bind_param("i", $bookingId);
+                        $staffStmt->execute();
+                        $staffStmt->close();
+                    }
+                }
                 $flash = ['type' => 'success', 'msg' => "Booking status updated to '{$status}'."];
             } else {
                 $flash = ['type' => 'danger', 'msg' => "Failed updating booking status."];
@@ -201,38 +209,48 @@ function formatTimeTo12Hour($time) {
     <title>Admin - Manage Bookings</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/admin-theme.css">
     <style>
         :root {
             --sidebar-width: 250px;
-            --primary-color: #4361ee;
-            --sidebar-bg: #1e293b;
+            --primary-color: #0ea5a4;
+            --sidebar-bg: #0f172a;
             --sidebar-text: #cbd5e1;
-            --sidebar-active: #3b82f6;
+            --sidebar-active: #22d3ee;
+            --surface: #ffffff;
+            --surface-2: #f8fafc;
+            --ink: #0f172a;
+            --muted: #64748b;
+            --ring: rgba(34, 211, 238, 0.25);
+            --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.12);
+            --shadow-md: 0 8px 22px rgba(15, 23, 42, 0.08);
+            --radius-lg: 16px;
         }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8fafc;
+            background: radial-gradient(1200px 800px at 10% 0%, #e2f2ff 0%, #f8fafc 45%, #f1f5f9 100%);
             overflow-x: hidden;
+            color: var(--ink);
         }
         
         /* Sidebar Styles */
         .sidebar {
             width: var(--sidebar-width);
             height: 100vh;
-            background: var(--sidebar-bg);
+            background: linear-gradient(180deg, #0b1220 0%, #0f172a 60%, #0b1220 100%);
             color: var(--sidebar-text);
             position: fixed;
             left: 0;
             top: 0;
             z-index: 1000;
             transition: all 0.3s;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 8px 0 24px rgba(2, 6, 23, 0.25);
         }
         
         .sidebar-header {
             padding: 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
         }
         
         .sidebar-header h2 {
@@ -260,16 +278,17 @@ function formatTimeTo12Hour($time) {
             text-decoration: none;
             transition: all 0.2s;
             border-left: 3px solid transparent;
+            border-radius: 0 12px 12px 0;
         }
         
         .menu-item:hover {
-            background: rgba(255,255,255,0.05);
+            background: rgba(34, 211, 238, 0.08);
             color: white;
             border-left-color: var(--sidebar-active);
         }
         
         .menu-item.active {
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(34, 211, 238, 0.16);
             color: white;
             border-left-color: var(--sidebar-active);
             font-weight: 500;
@@ -295,24 +314,25 @@ function formatTimeTo12Hour($time) {
         
         /* Top Navbar */
         .top-navbar {
-            background: white;
-            border-bottom: 1px solid #e2e8f0;
+            background: rgba(255,255,255,0.9);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
             padding: 15px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: var(--shadow-md);
+            backdrop-filter: blur(8px);
         }
         
         .page-title h1 {
             font-size: 1.5rem;
             font-weight: 600;
-            color: #1e293b;
+            color: var(--ink);
             margin: 0;
         }
         
         .page-title p {
-            color: #64748b;
+            color: var(--muted);
             font-size: 0.875rem;
             margin: 5px 0 0 0;
         }
@@ -327,12 +347,13 @@ function formatTimeTo12Hour($time) {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: var(--primary-color);
+            background: linear-gradient(135deg, #0ea5a4, #22d3ee);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 600;
+            box-shadow: 0 8px 18px rgba(14, 165, 164, 0.35);
         }
         
         /* Content Area */
@@ -370,11 +391,12 @@ function formatTimeTo12Hour($time) {
         
         /* Cards */
         .card {
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
             transition: transform 0.2s;
             margin-bottom: 20px;
+            background: var(--surface);
         }
         
         .card:hover {
@@ -385,11 +407,12 @@ function formatTimeTo12Hour($time) {
         .badge {
             font-weight: 500;
             padding: 5px 10px;
+            border-radius: 999px;
         }
         
         /* Booking Card */
         .booking-card {
-            border-left: 4px solid #4361ee;
+            border-left: 6px solid #0ea5a4;
         }
         
         .booking-card.pending {
@@ -409,29 +432,80 @@ function formatTimeTo12Hour($time) {
         }
         
         .time-badge {
-            background: #e0f2fe;
-            color: #0369a1;
+            background: rgba(14, 165, 164, 0.12);
+            color: #0f766e;
             padding: 4px 8px;
             border-radius: 6px;
             font-size: 0.875rem;
         }
+
+        .status-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .status-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            padding-top: 6px;
+            border-top: 1px dashed rgba(148, 163, 184, 0.45);
+            min-height: 36px;
+        }
+
+        .action-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-right: 4px;
+        }
+
+        .status-actions .btn {
+            min-width: 84px;
+        }
+
+        .status-actions form {
+            margin: 0;
+        }
+
+        @media (max-width: 992px) {
+            .status-actions {
+                margin-top: 6px;
+            }
+            .action-row {
+                width: 100%;
+            }
+        }
         
         /* Search Bar */
         .search-bar {
-            background: white;
-            border-radius: 10px;
+            background: rgba(255,255,255,0.9);
+            border-radius: var(--radius-lg);
             padding: 15px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(226, 232, 240, 0.9);
         }
         
         /* Stats Cards */
         .stat-card {
-            background: white;
-            border-radius: 10px;
+            background: var(--surface);
+            border-radius: var(--radius-lg);
             padding: 15px;
             text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(226, 232, 240, 0.9);
         }
         
         .stat-number {
@@ -441,7 +515,7 @@ function formatTimeTo12Hour($time) {
         }
         
         .stat-label {
-            color: #64748b;
+            color: var(--muted);
             font-size: 0.875rem;
         }
 
@@ -449,6 +523,40 @@ function formatTimeTo12Hour($time) {
         .filter-active {
             font-weight: 600;
             color: var(--primary-color);
+        }
+
+        .btn {
+            border-radius: 10px;
+            font-weight: 600;
+            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0ea5a4, #22d3ee);
+            border: none;
+        }
+
+        .btn-outline-secondary,
+        .btn-outline-warning,
+        .btn-outline-success,
+        .btn-outline-info,
+        .btn-outline-danger {
+            background: #ffffff;
+            border-width: 1px;
+        }
+
+        .form-control:focus,
+        .form-select:focus,
+        .form-control:focus-visible,
+        .form-select:focus-visible {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--ring);
         }
     </style>
 </head>
@@ -697,9 +805,12 @@ function formatTimeTo12Hour($time) {
 
                                         <!-- Status & Actions -->
                                         <div class="col-lg-4">
-                                            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
-                                                <span class="<?= $statusBadgeClass ?>"><?= ucfirst($status) ?></span>
-                                                
+                                            <div class="status-actions">
+                                                <div class="status-row">
+                                                    <span class="<?= $statusBadgeClass ?>"><?= ucfirst($status) ?></span>
+                                                </div>
+                                                <div class="action-row">
+                                                    <span class="action-label">Action</span>
                                                 <?php if ($status === 'pending'): ?>
                                                     <form method="post" class="d-inline" onsubmit="return confirm('Approve this booking?')">
                                                         <input type="hidden" name="action" value="update_status">
@@ -730,6 +841,7 @@ function formatTimeTo12Hour($time) {
                                                         <button type="submit" class="btn btn-sm btn-outline-success">Verify Payment</button>
                                                     </form>
                                                 <?php endif; ?>
+                                                </div>
                                             </div>
 
                                             <?php if (!empty($b['customer_notes'])): ?>

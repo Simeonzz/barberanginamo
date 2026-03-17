@@ -424,6 +424,7 @@ session_start();
         position: relative;
         padding: 20px;
         transition: 0.3s ease;
+        wdith: 100%;
     }
 
     .team-card:hover {
@@ -582,38 +583,33 @@ $team = [
 ];
 ?>
 
+<!-- Team Carousel Section -->
+<link rel="stylesheet" href="assets/team-carousel.css">
 <section class="page-section" id="team" style="background: #0b0b0b; color: #fff; padding: 60px 0;">
     <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
         <h2 style="text-align: center; font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 15px; color: #fff;">OUR SPECIAL TEAM</h2>
-        <p style="text-align: center; color: #ccc; max-width: 700px; margin: 0 auto 40px; font-size: 1.1rem;">
+        <p style="text-align: center; color: #ccc; max-width: 1000px; margin: 0 auto 40px; font-size: 1.1rem;">
             Meet our talented team of stylists and beauty experts. Dedicated to making you look and feel your best.
         </p>
-        
-        <!-- TikTok-style swipe container -->
-        <div class="team-swipe-container" style="position: relative; max-width: 400px; margin: 0 auto; touch-action: pan-y pinch-zoom;">
-            <!-- Cards wrapper -->
-            <div class="team-swipe-wrapper" id="teamSwipeWrapper" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; gap: 20px; padding: 10px 0 20px 0; scrollbar-width: none;">
+        <div class="team-carousel-container">
+            <div class="team-carousel-track" id="teamCarouselTrack">
                 <?php foreach($team as $index => $member): ?>
-                <div class="team-card" style="flex: 0 0 100%; scroll-snap-align: center; background: #181818; border-radius: 20px; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.5); text-align: center; padding: 25px 15px; box-sizing: border-box;">
-                    <div style="width: 280px; height: 350px; margin: 0 auto; border-radius: 15px; overflow: hidden; border: 3px solid #d4af37; box-shadow: 0 10px 20px rgba(0,0,0,0.3);">
-                        <img src="<?php echo $member['image']; ?>" alt="<?php echo $member['name']; ?>" class="team-member-img" style="width: 100%; height: 100%; display: block;">
-                    </div>
-                    <h3 style="font-size: 1.8rem; margin: 20px 0 5px; color: #fff; font-family: 'Playfair Display', serif;"><?php echo $member['name']; ?></h3>
-                    <p style="color: #d4af37; font-size: 1.2rem; font-weight: 500; margin-bottom: 10px;"><?php echo $member['role']; ?></p>
-                    
-                    <!-- Rating Badge - Clickable to show reviews -->
-                    <div class="staff-rating-badge" onclick="showStaffRatings(<?php echo $member['id']; ?>, '<?php echo $member['name']; ?>')">
-                        <span class="stars" id="stars-<?php echo $member['id']; ?>">☆☆☆☆☆</span>
-                        <span class="count" id="rating-<?php echo $member['id']; ?>">(0.0)</span>
+                <div class="team-carousel-card">
+                    <img src="<?php echo $member['image']; ?>" alt="<?php echo $member['name']; ?>" class="team-carousel-img">
+                    <div class="team-carousel-name"><?php echo $member['name']; ?></div>
+                    <div class="team-carousel-role"><?php echo $member['role']; ?></div>
+                    <div class="team-carousel-rating">
+                        <div class="staff-rating-badge" onclick="showStaffRatings(<?php echo $member['id']; ?>, '<?php echo $member['name']; ?>')">
+                            <span class="stars" id="stars-<?php echo $member['id']; ?>">☆☆☆☆☆</span>
+                            <span class="count" id="rating-<?php echo $member['id']; ?>">(0.0)</span>
+                        </div>
                     </div>
                 </div>
                 <?php endforeach; ?>
             </div>
-            
-            <!-- Dots indicator -->
-            <div class="team-dots" style="display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
+            <div class="team-carousel-dots" id="teamCarouselDots">
                 <?php foreach($team as $index => $member): ?>
-                <span class="team-dot" data-index="<?php echo $index; ?>" style="width: 10px; height: 10px; border-radius: 50%; background: <?php echo $index === 0 ? '#d4af37' : '#444'; ?>; cursor: pointer; transition: all 0.3s;"></span>
+                <span class="team-carousel-dot<?php echo $index === 0 ? ' active' : ''; ?>" data-index="<?php echo $index; ?>"></span>
                 <?php endforeach; ?>
             </div>
         </div>
@@ -951,53 +947,39 @@ function closeStaffRatings() {
 }
 </style>
 
+</script>
 <script>
-// Add swipe functionality and dot indicators
+// Carousel movement and dot sync
 document.addEventListener('DOMContentLoaded', function() {
-    const wrapper = document.getElementById('teamSwipeWrapper');
-    const dots = document.querySelectorAll('.team-dot');
-    
-    if (!wrapper || dots.length === 0) return;
-    
-    // Update active dot on scroll
-    wrapper.addEventListener('scroll', function() {
-        const scrollPosition = wrapper.scrollLeft;
-        const cardWidth = wrapper.children[0]?.offsetWidth + 20; // width + gap
-        
-        if (cardWidth) {
-            const activeIndex = Math.round(scrollPosition / cardWidth);
-            
-            dots.forEach((dot, index) => {
-                if (index === activeIndex) {
-                    dot.style.background = '#d4af37';
-                    dot.style.transform = 'scale(1.2)';
-                } else {
-                    dot.style.background = '#444';
-                    dot.style.transform = 'scale(1)';
-                }
-            });
-        }
+    const track = document.getElementById('teamCarouselTrack');
+    const dotsWrap = document.getElementById('teamCarouselDots');
+    if (!track) return;
+
+    const cards = Array.from(track.children);
+    if (cards.length === 0) return;
+
+    // Duplicate cards to create a seamless marquee loop
+    const originalWidth = track.scrollWidth;
+    cards.forEach((card) => {
+        track.appendChild(card.cloneNode(true));
     });
-    
-    // Click on dots to navigate
-    dots.forEach((dot, index) => {
-        dot.addEventListener('click', function() {
-            const cardWidth = wrapper.children[0]?.offsetWidth + 20;
-            if (cardWidth) {
-                wrapper.scrollTo({
-                    left: index * cardWidth,
-                    behavior: 'smooth'
-                });
-            }
-        });
-    });
-    
-    // Initial dot highlight
-    setTimeout(() => {
-        const event = new Event('scroll');
-        wrapper.dispatchEvent(event);
-    }, 100);
+
+    const duration = Math.max(25, Math.round(originalWidth / 60));
+    track.classList.add('team-carousel-auto');
+    track.style.setProperty('--team-scroll-distance', `${originalWidth}px`);
+    track.style.setProperty('--team-scroll-duration', `${duration}s`);
+
+    if (dotsWrap) dotsWrap.style.display = 'none';
+
+    // Scroll to card on dot click
+    track.addEventListener('touchstart', () => {
+        track.style.animationPlayState = 'paused';
+    }, {passive: true});
+    track.addEventListener('touchend', () => {
+        track.style.animationPlayState = 'running';
+    }, {passive: true});
 });
+</script>
 </script>
     
     <!-- Services Section -->

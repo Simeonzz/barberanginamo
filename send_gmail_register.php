@@ -22,15 +22,15 @@ function sendRegisterEmail($toEmail, $toName){
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'simeonkulalo32@gmail.com'; // your gmail
-        $mail->Password   = 'ijnk hxhv pzxl coqw';       // gmail app password
+        $mail->Username   = 'barberanginamosalon@gmail.com'; // your gmail
+        $mail->Password   = 'gvrdiiorukaz tzkz';       // gmail app password
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
         $mail->Timeout = 15;
 
         // EMAIL CONTENT
-        $mail->setFrom('simeonkulalo32@gmail.com', 'Barberang Ina Mo');
+        $mail->setFrom('barberanginamosalon@gmail.com', 'Barberang Ina Mo');
         $mail->addAddress($toEmail, $toName);
 
         $mail->isHTML(true);

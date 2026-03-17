@@ -6,7 +6,13 @@ $user_id = $isLoggedIn ? $_SESSION['user_id'] : null;
 
 // Fetch services
 $services = [];
-$res = $conn->query("SELECT id, name, price, duration FROM services WHERE is_active=1 ORDER BY name");
+// Ensure category column exists (for older databases)
+$colRes = $conn->query("SHOW COLUMNS FROM services LIKE 'category'");
+if ($colRes && $colRes->num_rows === 0) {
+    $conn->query("ALTER TABLE services ADD COLUMN category VARCHAR(80) DEFAULT 'Uncategorized' AFTER name");
+}
+
+$res = $conn->query("SELECT id, name, category, price, duration FROM services WHERE is_active=1 ORDER BY category, name");
 while ($row = $res->fetch_assoc()) $services[] = $row;
 
 // Fetch staff (include photo field if exists)
@@ -43,23 +49,23 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
         .booking-container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: clamp(16px, 4vw, 40px) 20px;
         }
         
         .booking-header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: clamp(24px, 5vw, 40px);
         }
         
         .booking-title {
-            font-size: 2.5rem;
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
             color: #FFD700;
             margin-bottom: 10px;
         }
         
         .booking-subtitle {
             color: #c4c4c4;
-            font-size: 1.1rem;
+            font-size: clamp(0.95rem, 2.2vw, 1.1rem);
             max-width: 600px;
             margin: 0 auto;
         }
@@ -67,16 +73,17 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
         .booking-card {
             background: #1a1a1a;
             border-radius: 15px;
-            padding: 40px;
-            border: 2px solid rgba(255, 215, 0, 0.3);
+            padding: clamp(20px, 4vw, 40px);
+            border: 1px solid rgba(255, 215, 0, 0.25);
             margin-bottom: 30px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.35);
         }
         
         .form-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 30px;
-            margin-bottom: 30px;
+            gap: clamp(16px, 3vw, 30px);
+            margin-bottom: clamp(18px, 3vw, 30px);
         }
         
         .form-group {
@@ -100,6 +107,18 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
             color: #ffffff;
             font-size: 1rem;
             font-family: 'Poppins', sans-serif;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .form-input::placeholder, .form-textarea::placeholder {
+            color: #9a9a9a;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus, .form-file:focus {
+            outline: none;
+            border-color: #ffd84d;
+            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.12);
+            background: #262626;
         }
         
         .form-textarea {
@@ -113,6 +132,10 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
             padding: 20px;
             text-align: center;
             border: 1px solid rgba(255, 215, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
         }
         
         .qr-placeholder {
@@ -151,6 +174,10 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
             text-align: center;
             padding: 60px 20px;
         }
+
+        .dropdown-multicheckbox label:hover {
+            background: rgba(255, 215, 0, 0.08);
+        }
         
         @media (max-width: 992px) {
             .form-grid {
@@ -174,6 +201,11 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
             
             .booking-card {
                 padding: 20px;
+            }
+
+            .booking-card .btn {
+                width: 100%;
+                text-align: center;
             }
         }
     </style>
@@ -219,11 +251,30 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
                     <div class="form-grid">
                         <div class="form-group">
                             <label class="form-label">Service(s) *</label>
+                            <?php
+                                $categories = [];
+                                foreach ($services as $s) {
+                                    $cat = trim($s['category'] ?? 'Uncategorized');
+                                    if ($cat === '') $cat = 'Uncategorized';
+                                    $categories[$cat] = true;
+                                }
+                                $categoryList = array_keys($categories);
+                            ?>
+                            <div class="category-strip" id="serviceCategoryStrip">
+                                <?php foreach ($categoryList as $i => $cat): ?>
+                                    <button type="button" class="category-pill<?php echo $i === 0 ? ' active' : ''; ?>" data-category="<?php echo htmlspecialchars($cat); ?>">
+                                        <?php echo htmlspecialchars($cat); ?>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
                             <div class="dropdown-multicheckbox" style="position: relative;">
                                 <div id="serviceDropdownBtn" class="form-input" style="cursor:pointer; background:#2a2a2a; color:#FFD700;" onclick="toggleServiceDropdown()">Select service(s)</div>
-                                <div id="serviceDropdownList" style="display:none; position:absolute; z-index:10; background:#222; border:1px solid #FFD700; border-radius:8px; width:100%; max-height:220px; overflow-y:auto; margin-top:2px;">
-                                    <?php foreach($services as $s): ?>
-                                    <label style="display:flex; align-items:center; gap:8px; padding:8px 12px; cursor:pointer;">
+                                <div id="serviceDropdownList" style="display:none; position:absolute; z-index:10; background:#222; border:1px solid #FFD700; border-radius:8px; width:100%; max-height:260px; overflow-y:auto; margin-top:2px;">
+                                    <?php foreach($services as $s): 
+                                        $cat = trim($s['category'] ?? 'Uncategorized');
+                                        if ($cat === '') $cat = 'Uncategorized';
+                                    ?>
+                                    <label class="service-option" data-category="<?php echo htmlspecialchars($cat); ?>" style="display:flex; align-items:center; gap:8px; padding:8px 12px; cursor:pointer;">
                                         <input type="checkbox" name="service_ids[]" value="<?php echo $s['id']; ?>">
                                         <span><?php echo htmlspecialchars($s['name'] . ' — ₱' . number_format($s['price'],2) . ' (' . $s['duration'] . ' min)'); ?></span>
                                     </label>

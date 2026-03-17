@@ -18,7 +18,7 @@ function sendOTPEmail($toEmail, $toName, $otp) {
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'simeonkulalo32@gmail.com'; // CHANGE THIS
+        $mail->Username   = 'barberanginamosalon@gmail.com'; // CHANGE THIS
         $mail->Password   = 'ijnk hxhv pzxl coqw'; // CHANGE THIS
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
@@ -43,9 +43,9 @@ function sendOTPEmail($toEmail, $toName, $otp) {
         ]);
 
         // Recipients
-        $mail->setFrom('YOUR_EMAIL@gmail.com', 'Barberang Ina Mo');
+        $mail->setFrom('barberanginamosalon@gmail.com', 'Barberang Ina Mo');
         $mail->addAddress($toEmail, $toName);
-        $mail->addReplyTo('YOUR_EMAIL@gmail.com', 'Barberang Ina Mo');
+        $mail->addReplyTo('barberanginamosalon@gmail.com', 'Barberang Ina Mo');
 
         // Content
         $mail->isHTML(true);

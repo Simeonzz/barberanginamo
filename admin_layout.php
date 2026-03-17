@@ -46,6 +46,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     <title>Admin - <?php echo ucfirst(str_replace(['admin_', '.php'], '', $currentPage)); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/admin-theme.css">
     <style>
         :root {
             --sidebar-width: 250px;
