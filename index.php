@@ -89,12 +89,123 @@ session_start();
             border-radius: 15px;
             overflow: hidden;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            position: relative;
+            transform-style: preserve-3d;
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            width: 100%;
+            max-width: 620px;
+            margin: 0 auto;
+            aspect-ratio: 4 / 5;
+            background: #0b0b0b;
         }
 
         .about-image img {
             width: 100%;
             height: auto;
             display: block;
+            transform: scale(1.02);
+            filter: saturate(1.05);
+            transition: transform 0.6s ease, filter 0.5s ease;
+        }
+
+        .story-slider {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .story-track {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.5s ease;
+            will-change: transform;
+            gap: 0;
+            backface-visibility: hidden;
+        }
+
+        .story-slide {
+            min-width: 100%;
+            height: 100%;
+            position: relative;
+            flex: 0 0 100%;
+            overflow: hidden;
+        }
+
+        .story-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }
+
+        /* No arrows or dots - show only the picture */
+
+        .about-image::after {
+            content: '';
+            position: absolute;
+            inset: -12px;
+            border-radius: 20px;
+            background: radial-gradient(60% 60% at 30% 20%, rgba(212,175,55,0.35), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+        }
+
+        .about-image.is-visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            animation: storyFloat 6s ease-in-out infinite;
+        }
+
+        .about-image.is-visible img {
+            transform: scale(1.06);
+        }
+
+        /* Disable hover zoom/glow */
+        .about-image:hover img {
+            transform: scale(1.06);
+            filter: saturate(1.05);
+        }
+
+        .about-image:hover::after {
+            opacity: 0;
+        }
+
+        @keyframes storyFloat {
+            0% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-8px) scale(1.01); }
+            100% { transform: translateY(0) scale(1); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .about-image,
+            .about-image.is-visible {
+                animation: none;
+                transform: none;
+                opacity: 1;
+            }
+            .about-image img,
+            .about-image:hover img {
+                transform: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .about-image {
+                max-width: 420px;
+                aspect-ratio: 3 / 4;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .about-image {
+                max-width: 320px;
+                aspect-ratio: 3 / 4;
+            }
         }
 
         .section-title {
@@ -510,7 +621,22 @@ session_start();
         <div class="container">
             <div class="about-content">
                 <div class="about-image">
-                    <img src="uploads/picture/ourstory.jpg" alt="Our Story">
+                    <div class="story-slider" id="storySlider">
+                        <div class="story-track" id="storyTrack">
+                            <div class="story-slide">
+                                <img src="uploads/picture/ourstory.jpg" alt="Our Story">
+                            </div>
+                            <div class="story-slide">
+                                <img src="uploads/picture/ourstory1.jpg" alt="Our Story 1">
+                            </div>
+                            <div class="story-slide">
+                                <img src="uploads/picture/ourstory2.jpg" alt="Our Story 2">
+                            </div>
+                            <div class="story-slide">
+                                <img src="uploads/picture/ourstory3.jpg" alt="Our Story 3">
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div>
                     <div class="section-title">
@@ -988,56 +1114,178 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="section-title">
                 <h2>OUR SERVICES</h2>
                 <p style="color: #666; max-width: 600px; margin: 0 auto; margin-top: 15px;">
-                    Premium beauty services tailored to your needs
+                    Choose a service category to explore our most popular treatments and packages.
                 </p>
             </div>
-            
-            <div class="services-grid">
-                <?php
-                // Fetch services from database
-                include 'config.php';
-                $result = $conn->query("SELECT * FROM services WHERE is_active=1");
-                while($service = $result->fetch_assoc()):
-                ?>
-                <div class="service-card" tabindex="0" style="cursor:pointer"
-                    data-id="<?php echo (int)$service['id']; ?>"
-                    data-name="<?php echo htmlspecialchars($service['name']); ?>"
-                    data-description="<?php echo htmlspecialchars($service['description'] ?? ''); ?>"
-                    data-image="<?php echo htmlspecialchars($service['image_url'] ?? ''); ?>"
-                    data-price="<?php echo number_format($service['price'], 2); ?>"
-                    data-duration="<?php echo htmlspecialchars($service['duration']); ?>"
-                    onclick="openServiceModal(this)"
-                    onkeypress="if(event.key==='Enter'){openServiceModal(this);}"
-                >
-                    <div class="card-image">
-                        <?php if(!empty($service['image_url'])): ?>
-                            <img src="<?php echo $service['image_url']; ?>" alt="<?php echo htmlspecialchars($service['name']); ?>">
-                        <?php else: ?>
-                            <div style="height: 100%; background: linear-gradient(45deg, #f0f0f0, #e0e0e0); display: flex; align-items: center; justify-content: center;">
-                                <span style="font-size: 3rem; color: #d4af37;">✂️</span>
+
+            <?php
+            // Fetch services and group them into categories
+            include 'config.php';
+
+            $categoryOrder = [
+                'All',
+                'Hair Cut', 'Hair Color', 'Rebonding', 'Treatment', 'Hair Styling', 'Nails',
+                'Eyelash Extension', 'Hair & Make Up', 'Hand & Foot', 'Paraffin Wax', 'Add-ons'
+            ];
+
+            $services = [];
+            $res = $conn->query("SELECT * FROM services WHERE is_active=1 ORDER BY category, name");
+            while ($row = $res->fetch_assoc()) {
+                $row['category'] = trim($row['category'] ?? '') ?: 'Uncategorized';
+                $services[] = $row;
+            }
+
+            $servicesByCategory = [];
+            foreach ($services as $s) {
+                $cat = $s['category'];
+                if (!in_array($cat, $categoryOrder, true)) {
+                    $categoryOrder[] = $cat;
+                }
+                $servicesByCategory[$cat][] = $s;
+            }
+
+            // Most booked (simple popularity metric)
+            $mostBooked = [];
+            $mostBookedRes = $conn->query(
+                "SELECT s.*, COUNT(b.id) AS bookings
+                 FROM services s
+                 LEFT JOIN bookings b ON b.service_id = s.id AND b.status IN ('approved','completed')
+                 WHERE s.is_active=1
+                 GROUP BY s.id
+                 ORDER BY bookings DESC
+                 LIMIT 4"
+            );
+            while ($row = $mostBookedRes->fetch_assoc()) {
+                $mostBooked[] = $row;
+            }
+            ?>
+
+            <div class="services-controls">
+                <div class="services-search">
+                    <input id="serviceSearch" type="search" placeholder="Search services..." aria-label="Search services" />
+                </div>
+                <div class="services-tabs" id="servicesTabList" role="tablist">
+                    <?php foreach ($categoryOrder as $i => $cat):
+                        if (empty($servicesByCategory[$cat])) continue;
+                    ?>
+                        <button type="button" class="tab-btn <?= $i === 0 ? 'active' : '' ?>" data-category="<?= htmlspecialchars($cat) ?>" role="tab">
+                            <?= htmlspecialchars($cat) ?>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="most-booked">
+                <h3>Most Booked</h3>
+                <div class="services-grid" id="mostBookedGrid">
+                    <?php foreach ($mostBooked as $service):
+                        $durationLabel = trim($service['duration_display'] ?? '') !== ''
+                            ? $service['duration_display'] . ' (' . $service['duration'] . ' min)'
+                            : $service['duration'] . ' min';
+                    ?>
+                        <div class="service-card" tabindex="0" style="cursor:pointer;" 
+                            data-id="<?php echo (int) $service['id']; ?>"
+                            data-name="<?php echo htmlspecialchars($service['name']); ?>"
+                            data-description="<?php echo htmlspecialchars($service['description'] ?? ''); ?>"
+                            data-image="<?php echo htmlspecialchars($service['image_url'] ?? ''); ?>"
+                            data-price="<?php echo number_format($service['price'], 2); ?>"
+                            data-duration="<?php echo htmlspecialchars($service['duration']); ?>"
+                            data-duration-display="<?php echo htmlspecialchars($service['duration_display'] ?? ''); ?>"
+                            onclick="openServiceModal(this)"
+                            onkeypress="if(event.key==='Enter'){openServiceModal(this);}"
+                        >
+                            <div class="card-image">
+                                <?php if (!empty($service['image_url'])): ?>
+                                    <img src="<?php echo $service['image_url']; ?>" alt="<?php echo htmlspecialchars($service['name']); ?>">
+                                <?php else: ?>
+                                    <div class="card-image-placeholder">
+                                        <span>✂️</span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card-content">
-                        <h3 class="card-title"><?php echo htmlspecialchars($service['name']); ?></h3>
-                        <p class="card-description"><?php echo htmlspecialchars(mb_strimwidth($service['description'] ?? '', 0, 120, "...")); ?></p>
-                        <div class="card-footer">
-                            <div class="card-price">₱<?php echo number_format($service['price'], 2); ?></div>
-                            <div style="color: #999; font-size: 0.9rem;">
-                                <span>⏱️</span>
-                                <span><?php echo htmlspecialchars($service['duration']); ?> min</span>
+                            <div class="card-content">
+                                <h3 class="card-title"><?php echo htmlspecialchars($service['name']); ?></h3>
+                                <p class="card-description"><?php echo htmlspecialchars(mb_strimwidth($service['description'] ?? '', 0, 80, '...')); ?></p>
+                                <div class="card-footer">
+                                    <div class="card-price">₱<?php echo number_format($service['price'], 2); ?></div>
+                                    <div class="card-meta">⏱️ <?php echo htmlspecialchars($durationLabel); ?></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
-                <?php endwhile; ?>
             </div>
-            
+
+            <div class="category-panels" id="categoriesContainer">
+                <?php foreach ($categoryOrder as $index => $cat):
+                    if ($cat === 'All') {
+                        $servicesList = $services;
+                    } else {
+                        if (empty($servicesByCategory[$cat])) continue;
+                        $servicesList = $servicesByCategory[$cat];
+                    }
+                ?>
+                    <div class="category-panel" data-category="<?= htmlspecialchars($cat) ?>" <?= $index !== 0 ? 'hidden' : '' ?> >
+                        <div class="category-header">
+                            <h3><?= htmlspecialchars($cat === 'All' ? 'All Services' : $cat) ?></h3>
+                            <?php if ($cat !== 'All' && count($servicesList) > 3): ?>
+                                <button type="button" class="view-more-btn" data-category="<?= htmlspecialchars($cat) ?>">
+                                    See All
+                                </button>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="services-grid" data-category="<?= htmlspecialchars($cat) ?>">
+                            <?php foreach ($servicesList as $i => $service):
+                                $show = ($cat === 'All') ? true : $i < 3;
+                                $durationLabel = trim($service['duration_display'] ?? '') !== ''
+                                    ? $service['duration_display'] . ' (' . $service['duration'] . ' min)'
+                                    : $service['duration'] . ' min';
+                            ?>
+                                <div class="service-card <?= $show ? '' : 'service-card--hidden' ?>" tabindex="0" style="cursor:pointer;" 
+                                    data-id="<?php echo (int) $service['id']; ?>"
+                                    data-name="<?php echo htmlspecialchars($service['name']); ?>"
+                                    data-description="<?php echo htmlspecialchars($service['description'] ?? ''); ?>"
+                                    data-image="<?php echo htmlspecialchars($service['image_url'] ?? ''); ?>"
+                                    data-price="<?php echo number_format($service['price'], 2); ?>"
+                                    data-duration="<?php echo htmlspecialchars($service['duration']); ?>"
+                                    data-duration-display="<?php echo htmlspecialchars($service['duration_display'] ?? ''); ?>"
+                                    onclick="openServiceModal(this)"
+                                    onkeypress="if(event.key==='Enter'){openServiceModal(this);}"
+                                >
+                                    <div class="card-image">
+                                        <?php if (!empty($service['image_url'])): ?>
+                                            <img src="<?php echo $service['image_url']; ?>" alt="<?php echo htmlspecialchars($service['name']); ?>">
+                                        <?php else: ?>
+                                            <div class="card-image-placeholder">
+                                                <span>✂️</span>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="card-content">
+                                        <h3 class="card-title"><?php echo htmlspecialchars($service['name']); ?></h3>
+                                        <p class="card-description"><?php echo htmlspecialchars(mb_strimwidth($service['description'] ?? '', 0, 80, '...')); ?></p>
+                                        <div class="card-footer">
+                                            <div class="card-price">₱<?php echo number_format($service['price'], 2); ?></div>
+                                            <div class="card-meta">⏱️ <?php echo htmlspecialchars($durationLabel); ?></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
             <div class="text-center mt-3">
                 <a href="#appointment" class="btn btn-primary">Book a Service</a>
             </div>
-                <div class="team-container" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:40px; max-width:1200px; margin:auto;">
-            <div id="serviceModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5);">
+
+            <div class="fixed-book-btn" title="Book Appointment">
+                <a href="#appointment">Book Appointment</a>
+            </div>
+
+            <div id="serviceModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.55);">
                 <div class="modal-content" style="background:white; border-radius:15px; max-width:800px; margin:60px auto; padding:0; position:relative; box-shadow:0 10px 40px rgba(0,0,0,0.2); display:flex; flex-direction:row; overflow:hidden;">
                     <button onclick="closeServiceModal()" style="position:absolute; top:20px; right:20px; background:none; border:none; font-size:2rem; color:#999; cursor:pointer; z-index:2;">&times;</button>
                     <div id="modalImage" style="width:320px; min-width:220px; height:320px; background:#f0f0f0; display:flex; align-items:center; justify-content:center; border-radius:10px; overflow:hidden;"></div>
@@ -1061,38 +1309,323 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             </div>
-            <script>
-            function openServiceModal(el) {
-                document.getElementById('serviceModal').style.display = 'block';
-                document.body.style.overflow = 'hidden';
-                // Fill modal content
-                document.getElementById('modalName').textContent = el.dataset.name;
-                document.getElementById('modalDescription').innerHTML = el.dataset.description.replace(/\n/g, '<br>');
-                document.getElementById('modalDuration').textContent = el.dataset.duration + ' min';
-                document.getElementById('modalPrice').textContent = '₱' + el.dataset.price;
-                document.getElementById('modalServiceId').value = el.dataset.id;
-                // Service Image only
-                var img = el.dataset.image;
-                var imgDiv = document.getElementById('modalImage');
-                if (img && img.trim() !== '') {
-                    imgDiv.innerHTML = '<img src="'+img+'" alt="'+el.dataset.name+'" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:10px;">';
-                } else {
-                    imgDiv.innerHTML = '<span style="font-size:4rem;color:#d4af37;">✂️</span>';
+
+            <style>
+                /* Services section specific styling */
+                .services-controls {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 12px;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-bottom: 25px;
                 }
-            }
-            function closeServiceModal() {
-                document.getElementById('serviceModal').style.display = 'none';
-                document.body.style.overflow = '';
-            }
-            // Close modal on outside click
-            window.onclick = function(event) {
-                var modal = document.getElementById('serviceModal');
-                if (event.target === modal) closeServiceModal();
-            }
-            // Close modal on Escape key
-            document.addEventListener('keydown', function(e){
-                if(e.key==='Escape') closeServiceModal();
-            });
+
+                .services-search {
+                    flex: 1;
+                    min-width: 240px;
+                }
+
+                .services-search input {
+                    width: 100%;
+                    padding: 12px 14px;
+                    border-radius: 10px;
+                    border: 1px solid rgba(0,0,0,0.15);
+                    background: rgba(255,255,255,0.95);
+                    color: #222;
+                    font-size: 1rem;
+                }
+
+                .services-tabs {
+                    display: grid;
+                    grid-template-columns: repeat(6, minmax(0, 1fr));
+                    gap: 10px;
+                    margin-top: 10px;
+                }
+
+                .tab-btn {
+                    padding: 10px 18px;
+                    border-radius: 999px;
+                    border: 1px solid rgba(0,0,0,0.1);
+                    background: rgba(255,255,255,0.8);
+                    cursor: pointer;
+                    font-weight: 600;
+                    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+                }
+
+                .tab-btn.active {
+                    background: #d4af37;
+                    border-color: rgba(212,175,55,0.9);
+                    color: #1a1a1a;
+                }
+
+                .tab-btn:hover {
+                    transform: translateY(-1px);
+                }
+
+                .most-booked {
+                    margin-top: 35px;
+                }
+
+                .most-booked h3 {
+                    margin-bottom: 18px;
+                }
+
+                .category-panels {
+                    margin-top: 40px;
+                }
+
+                .category-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 18px;
+                    gap: 12px;
+                }
+
+                .category-header h3 {
+                    font-size: 1.6rem;
+                    margin: 0;
+                }
+
+                .view-more-btn {
+                    background: transparent;
+                    border: 1px solid rgba(0,0,0,0.15);
+                    padding: 10px 16px;
+                    border-radius: 999px;
+                    cursor: pointer;
+                    transition: background 0.2s ease, transform 0.2s ease;
+                    font-weight: 600;
+                }
+
+                .view-more-btn:hover {
+                    background: rgba(0,0,0,0.05);
+                    transform: translateY(-1px);
+                }
+
+                .service-card--hidden {
+                    display: none;
+                }
+
+                .category-panel.collapsed .services-grid {
+                    display: none;
+                }
+
+                .category-panel.collapsed .view-more-btn {
+                    display: none;
+                }
+
+                .fixed-book-btn {
+                    position: fixed;
+                    bottom: 22px;
+                    right: 22px;
+                    z-index: 999;
+                    background: rgba(212,175,55,0.95);
+                    border-radius: 999px;
+                    box-shadow: 0 12px 35px rgba(0,0,0,0.25);
+                    padding: 12px 18px;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .fixed-book-btn a {
+                    color: #1a1a1a;
+                    font-weight: 700;
+                    text-decoration: none;
+                }
+
+                .fixed-book-btn:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 16px 45px rgba(0,0,0,0.35);
+                }
+
+                @media (max-width: 820px) {
+                    .services-controls {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+
+                    .services-tabs {
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                    }
+
+                    .fixed-book-btn {
+                        right: 14px;
+                        bottom: 14px;
+                    }
+                }
+
+                @media (max-width: 580px) {
+                    .service-card {
+                        min-width: 100%;
+                    }
+
+                    .category-header {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+
+                    .category-header h3 {
+                        font-size: 1.35rem;
+                    }
+                }
+            </style>
+
+            <script>
+                (function() {
+                    const tabs = document.querySelectorAll('.tab-btn');
+                    const panels = document.querySelectorAll('.category-panel');
+                    const searchInput = document.getElementById('serviceSearch');
+
+                    const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+
+                    function setActiveCategory(category) {
+                        tabs.forEach(tab => {
+                            tab.classList.toggle('active', tab.dataset.category === category);
+                        });
+
+                        panels.forEach(panel => {
+                            const isMatch = panel.dataset.category === category;
+                            panel.hidden = !isMatch;
+
+                            if (isMobile()) {
+                                // On mobile, ensure the active category is expanded and others are collapsed
+                                panel.classList.toggle('collapsed', !isMatch);
+                            }
+                        });
+                    }
+
+                    function toggleAccordion(panel) {
+                        panel.classList.toggle('collapsed');
+                    }
+
+                    function filterCard(card, token) {
+                        const name = (card.dataset.name || '').toLowerCase();
+                        const desc = (card.dataset.description || '').toLowerCase();
+                        const term = token.toLowerCase();
+                        return name.includes(term) || desc.includes(term);
+                    }
+
+                    function applySearch() {
+                        const term = searchInput.value.trim();
+
+                        panels.forEach(panel => {
+                            const cards = panel.querySelectorAll('.service-card');
+                            let anyVisible = false;
+
+                            cards.forEach(card => {
+                                const matches = term === '' || filterCard(card, term);
+                                card.style.display = matches ? '' : 'none';
+                                if (matches) anyVisible = true;
+                            });
+
+                            // On desktop, hide full panels if no match
+                            if (!isMobile()) {
+                                panel.style.display = anyVisible ? '' : 'none';
+                            }
+                        });
+                    }
+
+                    searchInput.addEventListener('input', () => {
+                        applySearch();
+                    });
+
+                    // Tab click handler (desktop)
+                    tabs.forEach(tab => {
+                        tab.addEventListener('click', () => {
+                            setActiveCategory(tab.dataset.category);
+                            applySearch();
+                        });
+                    });
+
+                    // Accordion toggles (mobile)
+                    panels.forEach(panel => {
+                        const header = panel.querySelector('.category-header');
+                        if (!header) return;
+
+                        header.addEventListener('click', () => {
+                            if (!isMobile()) return;
+                            toggleAccordion(panel);
+                        });
+                    });
+
+                    // View more logic
+                    document.querySelectorAll('.view-more-btn').forEach(btn => {
+                        btn.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            const cat = btn.dataset.category;
+                            const panel = document.querySelector(`.category-panel[data-category="${cat}"]`);
+                            if (!panel) return;
+
+                            const hiddenCards = panel.querySelectorAll('.service-card--hidden');
+                            const isCollapsed = hiddenCards.length > 0;
+
+                            hiddenCards.forEach(c => c.classList.toggle('service-card--hidden', !isCollapsed));
+                            btn.textContent = isCollapsed ? 'Show Less' : 'See All';
+                        });
+                    });
+
+                    function initializeView() {
+                        const mobile = isMobile();
+
+                        if (mobile) {
+                            // Accordion style: show all panels but collapsed by default
+                            panels.forEach(panel => {
+                                panel.hidden = false;
+                                panel.classList.add('collapsed');
+                            });
+                            tabs.forEach(tab => tab.style.display = 'none');
+                        } else {
+                            // Desktop tabs
+                            tabs.forEach(tab => tab.style.display = 'inline-flex');
+                            if (tabs.length) {
+                                setActiveCategory(tabs[0].dataset.category);
+                            }
+                        }
+
+                        applySearch();
+                    }
+
+                    initializeView();
+                    window.addEventListener('resize', initializeView);
+                })();
+
+                // Modal helpers (keep existing behavior)
+                function openServiceModal(el) {
+                    document.getElementById('serviceModal').style.display = 'block';
+                    document.body.style.overflow = 'hidden';
+
+                    const durationDisplay = el.dataset.durationDisplay?.trim();
+                    const minutes = el.dataset.duration || '';
+                    const durationLabel = durationDisplay ? `${durationDisplay} (${minutes} min)` : `${minutes} min`;
+
+                    document.getElementById('modalName').textContent = el.dataset.name;
+                    document.getElementById('modalDescription').innerHTML = el.dataset.description.replace(/\n/g, '<br>');
+                    document.getElementById('modalDuration').textContent = durationLabel;
+                    document.getElementById('modalPrice').textContent = '₱' + el.dataset.price;
+                    document.getElementById('modalServiceId').value = el.dataset.id;
+
+                    const img = el.dataset.image;
+                    const imgDiv = document.getElementById('modalImage');
+                    if (img && img.trim() !== '') {
+                        imgDiv.innerHTML = `<img src="${img}" alt="${el.dataset.name}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:10px;">`;
+                    } else {
+                        imgDiv.innerHTML = '<span style="font-size:4rem;color:#d4af37;">✂️</span>';
+                    }
+                }
+
+                function closeServiceModal() {
+                    document.getElementById('serviceModal').style.display = 'none';
+                    document.body.style.overflow = '';
+                }
+
+                window.onclick = function(event) {
+                    var modal = document.getElementById('serviceModal');
+                    if (event.target === modal) closeServiceModal();
+                }
+
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') closeServiceModal();
+                });
             </script>
         </div>
     </section>
@@ -1342,6 +1875,93 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
             });
+        });
+    </script>
+    <script>
+        // Reveal + motion for Our Story image
+        document.addEventListener('DOMContentLoaded', function() {
+            const aboutImage = document.querySelector('.about-image');
+            if (!aboutImage) return;
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        aboutImage.classList.add('is-visible');
+                        observer.disconnect();
+                    }
+                });
+            }, { threshold: 0.3 });
+
+            observer.observe(aboutImage);
+        });
+    </script>
+    <script>
+        // Our Story swipeable slider (autoplay, forward loop)
+        document.addEventListener('DOMContentLoaded', function() {
+            const track = document.getElementById('storyTrack');
+            if (!track) return;
+
+            const slides = Array.from(track.children);
+            if (slides.length === 0) return;
+
+            // Clone first slide to create seamless forward loop
+            const firstClone = slides[0].cloneNode(true);
+            track.appendChild(firstClone);
+            let index = 0;
+
+            function update(immediate) {
+                if (immediate) {
+                    track.style.transition = 'none';
+                } else {
+                    track.style.transition = 'transform 0.5s ease';
+                }
+                track.style.transform = `translate3d(-${index * 100}%, 0, 0)`;
+            }
+
+            function goTo(i) {
+                index = i;
+                update();
+            }
+
+            // Touch swipe
+            let startX = 0;
+            let deltaX = 0;
+            track.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                deltaX = 0;
+            }, { passive: true });
+            track.addEventListener('touchmove', (e) => {
+                deltaX = e.touches[0].clientX - startX;
+            }, { passive: true });
+            track.addEventListener('touchend', () => {
+                if (Math.abs(deltaX) > 40) {
+                    goTo(deltaX < 0 ? index + 1 : index - 1);
+                }
+            });
+
+            // Autoplay
+            if (slides.length > 1) {
+                setInterval(() => {
+                    goTo(index + 1);
+                }, 3000);
+            }
+
+            // Seamless loop: when we reach the clone, jump to start without reversing
+            track.addEventListener('transitionend', () => {
+                if (index === slides.length) {
+                    index = 0;
+                    update(true);
+                    void track.offsetHeight;
+                    track.style.transition = 'transform 0.5s ease';
+                } else if (index < 0) {
+                    index = slides.length - 1;
+                    update(true);
+                    void track.offsetHeight;
+                    track.style.transition = 'transform 0.5s ease';
+                }
+            });
+
+            update();
         });
     </script>
     <!-- Rating System JavaScript -->

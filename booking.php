@@ -12,7 +12,18 @@ if ($colRes && $colRes->num_rows === 0) {
     $conn->query("ALTER TABLE services ADD COLUMN category VARCHAR(80) DEFAULT 'Uncategorized' AFTER name");
 }
 
-$res = $conn->query("SELECT id, name, category, price, duration FROM services WHERE is_active=1 ORDER BY category, name");
+// If duration_display column exists, fetch it too (for showing both text and minutes)
+$durationDisplayCol = false;
+$colRes2 = $conn->query("SHOW COLUMNS FROM services LIKE 'duration_display'");
+if ($colRes2 && $colRes2->num_rows > 0) {
+    $durationDisplayCol = true;
+}
+
+if ($durationDisplayCol) {
+    $res = $conn->query("SELECT id, name, category, price, duration, duration_display FROM services WHERE is_active=1 ORDER BY category, name");
+} else {
+    $res = $conn->query("SELECT id, name, category, price, duration FROM services WHERE is_active=1 ORDER BY category, name");
+}
 while ($row = $res->fetch_assoc()) $services[] = $row;
 
 // Fetch staff (include photo field if exists)
@@ -178,6 +189,111 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
         .dropdown-multicheckbox label:hover {
             background: rgba(255, 215, 0, 0.08);
         }
+
+        /* Category Pills */
+        .category-strip {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .category-pill {
+            padding: 10px 20px;
+            background: #2a2a2a;
+            color: #c4c4c4;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-family: 'Poppins', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .category-pill:hover {
+            background: #333;
+            border-color: #FFD700;
+            color: #FFD700;
+        }
+
+        .category-pill.active {
+            background: #FFD700;
+            color: #000;
+            border-color: #FFD700;
+            font-weight: 600;
+        }
+
+        /* Service List Container */
+        .service-list-container {
+            background: #2a2a2a;
+            border: 1px solid #FFD700;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+
+        .service-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            background: #1a1a1a;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .service-option:last-child {
+            margin-bottom: 0;
+        }
+
+        .service-option:hover {
+            background: #262626;
+            border-left: 3px solid #FFD700;
+            padding-left: 10px;
+        }
+
+        .service-option input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .service-option span {
+            color: #c4c4c4;
+            font-size: 0.9rem;
+            flex: 1;
+        }
+
+        .see-all-btn {
+            background: #FFD700;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            margin-top: 10px;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        .see-all-btn:hover {
+            background: #ffd84d;
+            transform: translateY(-2px);
+        }
+
+        .hidden-services {
+            display: none;
+        }
+
+        .hidden-services.show {
+            display: block;
+        }
         
         @media (max-width: 992px) {
             .form-grid {
@@ -206,6 +322,15 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
             .booking-card .btn {
                 width: 100%;
                 text-align: center;
+            }
+
+            .category-strip {
+                gap: 8px;
+            }
+
+            .category-pill {
+                padding: 8px 16px;
+                font-size: 0.85rem;
             }
         }
     </style>
@@ -252,34 +377,66 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
                         <div class="form-group">
                             <label class="form-label">Service(s) *</label>
                             <?php
-                                $categories = [];
+                                // Group services by category
+                                $servicesByCategory = [];
                                 foreach ($services as $s) {
                                     $cat = trim($s['category'] ?? 'Uncategorized');
                                     if ($cat === '') $cat = 'Uncategorized';
-                                    $categories[$cat] = true;
+                                    if (!isset($servicesByCategory[$cat])) {
+                                        $servicesByCategory[$cat] = [];
+                                    }
+                                    $servicesByCategory[$cat][] = $s;
                                 }
-                                $categoryList = array_keys($categories);
+                                
+                                // Get non-uncategorized categories
+                                $categories = [];
+                                foreach ($servicesByCategory as $cat => $svcs) {
+                                    if ($cat !== 'Uncategorized') {
+                                        $categories[] = $cat;
+                                    }
+                                }
+                                // Add Uncategorized at the end if it exists
+                                if (isset($servicesByCategory['Uncategorized'])) {
+                                    $categories[] = 'Uncategorized';
+                                }
                             ?>
                             <div class="category-strip" id="serviceCategoryStrip">
-                                <?php foreach ($categoryList as $i => $cat): ?>
+                                <?php foreach ($categories as $i => $cat): ?>
                                     <button type="button" class="category-pill<?php echo $i === 0 ? ' active' : ''; ?>" data-category="<?php echo htmlspecialchars($cat); ?>">
                                         <?php echo htmlspecialchars($cat); ?>
                                     </button>
                                 <?php endforeach; ?>
                             </div>
-                            <div class="dropdown-multicheckbox" style="position: relative;">
-                                <div id="serviceDropdownBtn" class="form-input" style="cursor:pointer; background:#2a2a2a; color:#FFD700;" onclick="toggleServiceDropdown()">Select service(s)</div>
-                                <div id="serviceDropdownList" style="display:none; position:absolute; z-index:10; background:#222; border:1px solid #FFD700; border-radius:8px; width:100%; max-height:260px; overflow-y:auto; margin-top:2px;">
-                                    <?php foreach($services as $s): 
+                            <div class="service-list-container" id="serviceListContainer">
+                                <?php 
+                                    // Display first category services (first 3) + see all button
+                                    $firstCategory = $categories[0] ?? 'Uncategorized';
+                                    $firstCategoryServices = $servicesByCategory[$firstCategory] ?? [];
+                                    $displayCount = 3;
+                                    
+                                    for ($j = 0; $j < count($firstCategoryServices); $j++):
+                                        $s = $firstCategoryServices[$j];
                                         $cat = trim($s['category'] ?? 'Uncategorized');
                                         if ($cat === '') $cat = 'Uncategorized';
-                                    ?>
-                                    <label class="service-option" data-category="<?php echo htmlspecialchars($cat); ?>" style="display:flex; align-items:center; gap:8px; padding:8px 12px; cursor:pointer;">
+                                        $isHidden = $j >= $displayCount ? 'hidden-services' : '';
+                                ?>
+                                    <label class="service-option <?php echo $isHidden; ?>" data-category="<?php echo htmlspecialchars($cat); ?>" style="display:flex; align-items:center; gap:8px; padding:8px 12px; cursor:pointer;">
                                         <input type="checkbox" name="service_ids[]" value="<?php echo $s['id']; ?>">
-                                        <span><?php echo htmlspecialchars($s['name'] . ' — ₱' . number_format($s['price'],2) . ' (' . $s['duration'] . ' min)'); ?></span>
+                                        <?php
+                                            $durationLabel = isset($s['duration_display']) && trim($s['duration_display']) !== ''
+                                                ? $s['duration_display'] . ' (' . $s['duration'] . ' minutes)'
+                                                : $s['duration'] . ' minutes';
+                                        ?>
+                                        <span><?php echo htmlspecialchars($s['name'] . ' — ₱' . number_format($s['price'],2) . ' — ' . $durationLabel); ?></span>
                                     </label>
-                                    <?php endforeach; ?>
-                                </div>
+                                <?php endfor; ?>
+                                
+                                <!-- See All Button -->
+                                <?php if (count($firstCategoryServices) > $displayCount): ?>
+                                    <button type="button" class="see-all-btn" id="seeAllBtn" onclick="toggleSeeAll(event)">
+                                        See All (<?php echo count($firstCategoryServices); ?>)
+                                    </button>
+                                <?php endif; ?>
                             </div>
                         </div>
                         
@@ -360,33 +517,87 @@ while ($row = $res2->fetch_assoc()) $staff[] = $row;
             }
         });
 
-        // Dropdown with checkboxes for services
-        function toggleServiceDropdown() {
-            var list = document.getElementById('serviceDropdownList');
-            list.style.display = (list.style.display === 'block') ? 'none' : 'block';
-        }
-        // Close dropdown if clicked outside
-        document.addEventListener('click', function(e) {
-            var btn = document.getElementById('serviceDropdownBtn');
-            var list = document.getElementById('serviceDropdownList');
-            if (!btn.contains(e.target) && !list.contains(e.target)) {
-                list.style.display = 'none';
+        // Services by category data
+        const servicesData = <?php echo json_encode($servicesByCategory); ?>;
+        const displayCount = 3;
+        let currentCategory = '<?php echo $categories[0] ?? 'Uncategorized'; ?>';
+        let showAllExpanded = false;
+
+        // Category pill filtering
+        document.querySelectorAll('.category-pill').forEach(pill => {
+            pill.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Update active state
+                document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Get selected category
+                const selectedCategory = this.getAttribute('data-category');
+                currentCategory = selectedCategory;
+                showAllExpanded = false;
+                
+                // Update service list
+                updateServiceList(selectedCategory);
+            });
+        });
+
+        function updateServiceList(category) {
+            const container = document.getElementById('serviceListContainer');
+            const servicesInCategory = servicesData[category] || [];
+            
+            let html = '';
+            
+            // Show first 3 services
+            for (let i = 0; i < servicesInCategory.length; i++) {
+                const service = servicesInCategory[i];
+                const isHidden = i >= displayCount && !showAllExpanded ? 'hidden-services' : '';
+                const durationLabel = service.duration_display && service.duration_display.trim() !== ''
+                    ? service.duration_display + ' (' + service.duration + ' minutes)'
+                    : service.duration + ' minutes';
+                
+                html += `
+                    <label class="service-option ${isHidden}" data-category="${service.category || 'Uncategorized'}">
+                        <input type="checkbox" name="service_ids[]" value="${service.id}">
+                        <span>${service.name} — ₱${parseFloat(service.price).toFixed(2)} — ${durationLabel}</span>
+                    </label>
+                `;
             }
-        });
-        // Update dropdown button text with selected services
-        document.querySelectorAll('input[name="service_ids[]"]').forEach(function(checkbox) {
-            checkbox.addEventListener('change', updateServiceDropdownBtn);
-        });
+            
+            // Add See All button if needed
+            if (servicesInCategory.length > displayCount) {
+                const btnText = showAllExpanded ? `Show Less (${displayCount})` : `See All (${servicesInCategory.length})`;
+                html += `<button type="button" class="see-all-btn" onclick="toggleSeeAll(event)">${btnText}</button>`;
+            }
+            
+            container.innerHTML = html;
+            
+            // Re-attach checkbox event listeners
+            document.querySelectorAll('input[name="service_ids[]"]').forEach(function(checkbox) {
+                checkbox.addEventListener('change', updateServiceDropdownBtn);
+            });
+            
+            // Update dropdown button text
+            updateServiceDropdownBtn();
+        }
+
+        function toggleSeeAll(event) {
+            event.preventDefault();
+            showAllExpanded = !showAllExpanded;
+            updateServiceList(currentCategory);
+        }
+
+        // Update dropdown button text with selected services (visual feedback)
         function updateServiceDropdownBtn() {
             var checked = Array.from(document.querySelectorAll('input[name="service_ids[]"]:checked'));
-            var btn = document.getElementById('serviceDropdownBtn');
-            if (checked.length === 0) {
-                btn.textContent = 'Select service(s)';
+            if (checked.length > 0) {
+                // Visual feedback that services are selected
+                document.getElementById('serviceListContainer').style.borderColor = '#4ade80';
             } else {
-                var names = checked.map(cb => cb.nextElementSibling.textContent.trim());
-                btn.textContent = names.join(', ');
+                document.getElementById('serviceListContainer').style.borderColor = '#FFD700';
             }
         }
+
         // Required validation for at least one service
         document.querySelector('form').addEventListener('submit', function(e) {
             var checked = document.querySelectorAll('input[name="service_ids[]"]:checked');

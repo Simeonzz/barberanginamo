@@ -29,6 +29,7 @@ function setupServicesTable($conn) {
             description TEXT,
             price DECIMAL(10,2) NOT NULL,
             duration INT NOT NULL,
+            duration_display VARCHAR(50),
             image_url VARCHAR(500),
             is_active BOOLEAN DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -74,8 +75,11 @@ function setupServicesTable($conn) {
         if (!in_array('duration', $columnNames)) {
             $conn->query("ALTER TABLE services ADD COLUMN duration INT AFTER price");
         }
+        if (!in_array('duration_display', $columnNames)) {
+            $conn->query("ALTER TABLE services ADD COLUMN duration_display VARCHAR(50) AFTER duration");
+        }
         if (!in_array('image_url', $columnNames)) {
-            $conn->query("ALTER TABLE services ADD COLUMN image_url VARCHAR(500) AFTER duration");
+            $conn->query("ALTER TABLE services ADD COLUMN image_url VARCHAR(500) AFTER duration_display");
         }
         if (!in_array('is_active', $columnNames)) {
             $conn->query("ALTER TABLE services ADD COLUMN is_active BOOLEAN DEFAULT 1 AFTER image_url");
@@ -132,8 +136,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_service'])) {
     $category = trim($_POST['category'] ?? 'Uncategorized');
     $description = trim($_POST['description']);
     $price = floatval($_POST['price']);
-    $duration = intval($_POST['duration']);
+
+    // Allow duration input like "45" or "1h 30m" and store as minutes
+    $durationRaw = trim($_POST['duration'] ?? '');
+    $duration = 0;
+    if (preg_match('/(\d+)\s*h(?:r(?:s)?)?/', strtolower($durationRaw), $m)) {
+        $duration += intval($m[1]) * 60;
+    }
+    if (preg_match('/(\d+)\s*m(?:in(?:s)?)?/', strtolower($durationRaw), $m)) {
+        $duration += intval($m[1]);
+    }
+    // Fallback: if no h/m specified, grab first number as minutes
+    if ($duration === 0 && preg_match('/(\d+)/', $durationRaw, $m)) {
+        $duration = intval($m[1]);
+    }
     
+    // Store the original input as display text
+    $duration_display = $durationRaw;
+
     $image_url = null;
     $error = null;
     
@@ -154,21 +174,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_service'])) {
         if ($id) {
             // Update service
             if ($image_url) {
-                $stmt = $conn->prepare("UPDATE services SET name=?, category=?, description=?, price=?, duration=?, image_url=? WHERE id=?");
-                $stmt->bind_param("sssdisi", $name, $category, $description, $price, $duration, $image_url, $id);
+                $stmt = $conn->prepare("UPDATE services SET name=?, category=?, description=?, price=?, duration=?, duration_display=?, image_url=? WHERE id=?");
+                $stmt->bind_param("sssdsssi", $name, $category, $description, $price, $duration, $duration_display, $image_url, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE services SET name=?, category=?, description=?, price=?, duration=? WHERE id=?");
-                $stmt->bind_param("sssiii", $name, $category, $description, $price, $duration, $id);
+                $stmt = $conn->prepare("UPDATE services SET name=?, category=?, description=?, price=?, duration=?, duration_display=? WHERE id=?");
+                $stmt->bind_param("sssdssi", $name, $category, $description, $price, $duration, $duration_display, $id);
             }
             $message = "Service updated successfully.";
         } else {
             // Insert new service
             if ($image_url) {
-                $stmt = $conn->prepare("INSERT INTO services (name, category, description, price, duration, image_url, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)");
-                $stmt->bind_param("sssdis", $name, $category, $description, $price, $duration, $image_url);
+                $stmt = $conn->prepare("INSERT INTO services (name, category, description, price, duration, duration_display, image_url, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+                $stmt->bind_param("sssdsss", $name, $category, $description, $price, $duration, $duration_display, $image_url);
             } else {
-                $stmt = $conn->prepare("INSERT INTO services (name, category, description, price, duration, is_active) VALUES (?, ?, ?, ?, ?, 1)");
-                $stmt->bind_param("sssdi", $name, $category, $description, $price, $duration);
+                $stmt = $conn->prepare("INSERT INTO services (name, category, description, price, duration, duration_display, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)");
+                $stmt->bind_param("sssdss", $name, $category, $description, $price, $duration, $duration_display);
             }
             $message = "Service added successfully.";
         }
@@ -592,7 +612,7 @@ if ($result) {
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <p class="mb-1"><strong>Price:</strong> ₱<?= number_format($price, 2) ?></p>
-                                            <p class="mb-0"><strong>Duration:</strong> <?= $duration ?> minutes</p>
+                                            <p class="mb-0"><strong>Duration:</strong> <?= htmlspecialchars(!empty($duration_display) ? $duration_display . ' (' . $duration . ' minutes)' : $duration . ' minutes') ?></p>
                                         </div>
                                         <div class="d-flex gap-1">
                                             <button class="btn btn-sm btn-outline-primary" onclick="editService(<?= htmlspecialchars(json_encode($service), ENT_QUOTES, 'UTF-8') ?>)">
@@ -652,7 +672,8 @@ if ($result) {
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Duration (minutes) *</label>
-                                        <input type="number" name="duration" id="duration" class="form-control" required>
+                                        <input type="text" name="duration" id="duration" class="form-control" placeholder="e.g. 45, 1h 30m, 2hrs" required>
+                                        <small id="durationPreview" class="form-text text-muted"></small>
                                     </div>
                                 </div>
                             </div>
@@ -731,7 +752,9 @@ if ($result) {
             document.getElementById('category').value = service.category || '';
             document.getElementById('description').value = service.description || '';
             document.getElementById('price').value = service.price || '';
-            document.getElementById('duration').value = service.duration || '';
+            document.getElementById('duration').value = service.duration_display || service.duration || '';
+            // Trigger preview update when editing a service
+            document.getElementById('duration').dispatchEvent(new Event('input'));
             
             if (service.image_url && service.image_url.trim() !== '') {
                 document.getElementById('imagePreview').src = service.image_url;
@@ -747,20 +770,45 @@ if ($result) {
             serviceModal.show();
         }
         
-        // Image preview
-        document.getElementById('image').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('imagePreview').src = e.target.result;
-                    document.getElementById('imagePreview').style.display = 'block';
-                    document.getElementById('noImage').style.display = 'none';
-                };
-                reader.readAsDataURL(file);
+        // Duration preview
+        document.getElementById('duration').addEventListener('input', function() {
+            const value = this.value.trim();
+            const preview = document.getElementById('durationPreview');
+            
+            if (value === '') {
+                preview.textContent = '';
+                return;
+            }
+            
+            // Parse duration function (same as backend)
+            function parseDurationMinutes(input) {
+                const str = (input || '').toLowerCase();
+                let minutes = 0;
+
+                // Match hours (h, hr, hrs)
+                const hMatch = str.match(/(\d+)\s*h(?:r(?:s)?)?/);
+                if (hMatch) minutes += parseInt(hMatch[1], 10) * 60;
+
+                // Match minutes (m, min, mins)
+                const mMatch = str.match(/(\d+)\s*m(?:in(?:s)?)?/);
+                if (mMatch) minutes += parseInt(mMatch[1], 10);
+
+                // Fallback: if no units specified, treat as minutes
+                if (minutes === 0) {
+                    const numMatch = str.match(/(\d+)/);
+                    if (numMatch) minutes = parseInt(numMatch[1], 10);
+                }
+
+                return minutes;
+            }
+            
+            const minutes = parseDurationMinutes(value);
+            if (minutes > 0) {
+                preview.textContent = `Will be saved as ${minutes} minutes`;
+                preview.style.color = '#6c757d'; // muted color
             } else {
-                document.getElementById('imagePreview').style.display = 'none';
-                document.getElementById('noImage').style.display = 'block';
+                preview.textContent = 'Invalid duration format';
+                preview.style.color = '#dc3545'; // red color
             }
         });
         
@@ -783,12 +831,31 @@ if ($result) {
                 return false;
             }
             
-            if (parseInt(duration) <= 0) {
+            // Support values like "45", "45m" or "1h 30m"
+            function parseDurationMinutes(value) {
+                const str = (value || '').toLowerCase();
+                let minutes = 0;
+
+                const hMatch = str.match(/(\d+)\s*h/);
+                if (hMatch) minutes += parseInt(hMatch[1], 10) * 60;
+
+                const mMatch = str.match(/(\d+)\s*m/);
+                if (mMatch) minutes += parseInt(mMatch[1], 10);
+
+                if (minutes === 0) {
+                    const numMatch = str.match(/(\d+)/);
+                    if (numMatch) minutes = parseInt(numMatch[1], 10);
+                }
+
+                return minutes;
+            }
+
+            if (parseDurationMinutes(duration) <= 0) {
                 event.preventDefault();
                 alert('Duration must be greater than 0 minutes.');
                 return false;
             }
-            
+
             return true;
         });
         
